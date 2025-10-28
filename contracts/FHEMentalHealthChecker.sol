@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.24;
 
-import { FHE, euint8, euint32, inEuint32 } from "@fhevm/lib/TFHE.sol";
-import { Permissioned, Permission } from "@fhevm/abstracts/Permissioned.sol";
+import { FHE, euint8, euint32, externalEuint32 } from "@fhevm/solidity/lib/FHE.sol";
+import { SepoliaConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /**
  * @title FHEMentalHealthChecker
@@ -10,7 +10,7 @@ import { Permissioned, Permission } from "@fhevm/abstracts/Permissioned.sol";
  * @notice Privacy-preserving mental health self-assessment system using Fully Homomorphic Encryption
  * @dev All mental health data remains encrypted on-chain, only users can decrypt their own data
  */
-contract FHEMentalHealthChecker is Permissioned {
+contract FHEMentalHealthChecker is SepoliaConfig {
     
     /**
 
@@ -85,7 +85,7 @@ contract FHEMentalHealthChecker is Permissioned {
         euint32 stressIndex;       // Stress index (encrypted)
         euint32 sleepQuality;      // Sleep quality (encrypted)
         euint32 resilienceScore;   // Resilience score (encrypted)
-        euint32 lastUpdateTime;    // Last update time (encrypted)
+        uint256 lastUpdateTime;    // Last update time (not encrypted, public info)
         bool exists;               // Whether record exists
     }
     
@@ -115,29 +115,38 @@ contract FHEMentalHealthChecker is Permissioned {
     // =====================================================================
     
     /**
-
      * @notice Create mental health profile
      * @param _anxietyLevel Anxiety level (encrypted input, 0-21)
+     * @param _anxietyProof Proof for anxiety level
      * @param _depressionScore Depression score (encrypted input, 0-27)
+     * @param _depressionProof Proof for depression score
      * @param _stressIndex Stress index (encrypted input, 0-40)
+     * @param _stressProof Proof for stress index
      * @param _sleepQuality Sleep quality (encrypted input, 0-21)
+     * @param _sleepProof Proof for sleep quality
      * @param _resilienceScore Resilience score (encrypted input, 0-100)
+     * @param _resilienceProof Proof for resilience score
      */
     function createProfile(
-        inEuint32 calldata _anxietyLevel,
-        inEuint32 calldata _depressionScore,
-        inEuint32 calldata _stressIndex,
-        inEuint32 calldata _sleepQuality,
-        inEuint32 calldata _resilienceScore
+        externalEuint32 _anxietyLevel,
+        bytes calldata _anxietyProof,
+        externalEuint32 _depressionScore,
+        bytes calldata _depressionProof,
+        externalEuint32 _stressIndex,
+        bytes calldata _stressProof,
+        externalEuint32 _sleepQuality,
+        bytes calldata _sleepProof,
+        externalEuint32 _resilienceScore,
+        bytes calldata _resilienceProof
     ) external {
         require(!userProfiles[msg.sender].exists, "Profile already exists");
         
         // Convert encrypted inputs
-        euint32 anxiety = FHE.asEuint32(_anxietyLevel);
-        euint32 depression = FHE.asEuint32(_depressionScore);
-        euint32 stress = FHE.asEuint32(_stressIndex);
-        euint32 sleep = FHE.asEuint32(_sleepQuality);
-        euint32 resilience = FHE.asEuint32(_resilienceScore);
+        euint32 anxiety = FHE.fromExternal(_anxietyLevel, _anxietyProof);
+        euint32 depression = FHE.fromExternal(_depressionScore, _depressionProof);
+        euint32 stress = FHE.fromExternal(_stressIndex, _stressProof);
+        euint32 sleep = FHE.fromExternal(_sleepQuality, _sleepProof);
+        euint32 resilience = FHE.fromExternal(_resilienceScore, _resilienceProof);
         
         // Create profile
         userProfiles[msg.sender] = MentalHealthProfile({
@@ -146,7 +155,7 @@ contract FHEMentalHealthChecker is Permissioned {
             stressIndex: stress,
             sleepQuality: sleep,
             resilienceScore: resilience,
-            lastUpdateTime: FHE.asEuint32(block.timestamp),
+            lastUpdateTime: block.timestamp,
             exists: true
         });
         
@@ -171,24 +180,28 @@ contract FHEMentalHealthChecker is Permissioned {
      * @notice Update complete mental health profile
      */
     function updateProfile(
-        inEuint32 calldata _anxietyLevel,
-        inEuint32 calldata _depressionScore,
-        inEuint32 calldata _stressIndex,
-        inEuint32 calldata _sleepQuality,
-        inEuint32 calldata _resilienceScore
+        externalEuint32 _anxietyLevel,
+        bytes calldata _anxietyProof,
+        externalEuint32 _depressionScore,
+        bytes calldata _depressionProof,
+        externalEuint32 _stressIndex,
+        bytes calldata _stressProof,
+        externalEuint32 _sleepQuality,
+        bytes calldata _sleepProof,
+        externalEuint32 _resilienceScore,
+        bytes calldata _resilienceProof
     ) external {
-
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
         
         // Update all metrics
-        profile.anxietyLevel = FHE.asEuint32(_anxietyLevel);
-        profile.depressionScore = FHE.asEuint32(_depressionScore);
-        profile.stressIndex = FHE.asEuint32(_stressIndex);
-        profile.sleepQuality = FHE.asEuint32(_sleepQuality);
-        profile.resilienceScore = FHE.asEuint32(_resilienceScore);
-        profile.lastUpdateTime = FHE.asEuint32(block.timestamp);
+        profile.anxietyLevel = FHE.fromExternal(_anxietyLevel, _anxietyProof);
+        profile.depressionScore = FHE.fromExternal(_depressionScore, _depressionProof);
+        profile.stressIndex = FHE.fromExternal(_stressIndex, _stressProof);
+        profile.sleepQuality = FHE.fromExternal(_sleepQuality, _sleepProof);
+        profile.resilienceScore = FHE.fromExternal(_resilienceScore, _resilienceProof);
+        profile.lastUpdateTime = block.timestamp;
         
         assessmentCount[msg.sender]++;
         
@@ -211,16 +224,17 @@ contract FHEMentalHealthChecker is Permissioned {
      * @notice Update a single mental health metric
      * @param metric The metric type to update
      * @param value New metric value (encrypted)
+     * @param inputProof Proof for the encrypted value
      */
     function updateMetric(
         MentalHealthMetric metric,
-        inEuint32 calldata value
+        externalEuint32 value,
+        bytes calldata inputProof
     ) external {
-
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
-        euint32 encryptedValue = FHE.asEuint32(value);
+        euint32 encryptedValue = FHE.fromExternal(value, inputProof);
         
         if (metric == MentalHealthMetric.ANXIETY_LEVEL) {
             profile.anxietyLevel = encryptedValue;
@@ -234,7 +248,7 @@ contract FHEMentalHealthChecker is Permissioned {
             profile.resilienceScore = encryptedValue;
         }
         
-        profile.lastUpdateTime = FHE.asEuint32(block.timestamp);
+        profile.lastUpdateTime = block.timestamp;
         
         // Grant user permission to view
         FHE.allowThis(encryptedValue);
@@ -321,7 +335,7 @@ contract FHEMentalHealthChecker is Permissioned {
      * @notice Calculate overall mental health status (encrypted computation)
      * @return Overall status score (encrypted, 0=healthy, 1=needs attention, 2=needs help)
      */
-    function getOverallStatus() external view returns (euint8) {
+    function getOverallStatus() external returns (euint8) {
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
@@ -391,6 +405,10 @@ contract FHEMentalHealthChecker is Permissioned {
             )
         );
         
+        // Grant user permission to decrypt the status
+        FHE.allowThis(status);
+        FHE.allow(status, msg.sender);
+        
         return status;
     }
     
@@ -409,4 +427,21 @@ contract FHEMentalHealthChecker is Permissioned {
     function getAssessmentCount() external view returns (uint256) {
         return assessmentCount[msg.sender];
     }
-   
+    
+    /**
+     * @notice Re-grant decryption permissions for all profile data
+     * @dev Must be called before each decryption attempt
+     */
+    function allowUserDecryption() external {
+        require(userProfiles[msg.sender].exists, "Profile does not exist");
+        
+        MentalHealthProfile storage profile = userProfiles[msg.sender];
+        
+        // Grant user permission to decrypt all their data
+        FHE.allow(profile.anxietyLevel, msg.sender);
+        FHE.allow(profile.depressionScore, msg.sender);
+        FHE.allow(profile.stressIndex, msg.sender);
+        FHE.allow(profile.sleepQuality, msg.sender);
+        FHE.allow(profile.resilienceScore, msg.sender);
+    }
+}

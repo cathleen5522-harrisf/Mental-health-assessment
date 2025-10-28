@@ -331,7 +331,12 @@ function App() {
       const signer = await provider.getSigner();
       const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-      console.log('\n⏳ Step 1/6: Getting encrypted data handles...');
+      console.log('\n⏳ Step 1/7: Re-granting decryption permissions...');
+      const allowTx = await contract.allowUserDecryption();
+      await allowTx.wait();
+      console.log('✅ Permissions granted');
+
+      console.log('\n⏳ Step 2/7: Getting encrypted data handles...');
       const anxietyHandle = await contract.getAnxietyLevel();
       const depressionHandle = await contract.getDepressionScore();
       const stressHandle = await contract.getStressIndex();
@@ -339,16 +344,16 @@ function App() {
       const resilienceHandle = await contract.getResilienceScore();
       console.log('✅ All handles retrieved');
 
-      console.log('\n⏳ Step 2/6: Calculating overall health status...');
+      console.log('\n⏳ Step 3/7: Calculating overall health status...');
       const overallTx = await contract.getOverallStatus();
       await overallTx.wait();
       console.log('✅ Overall status calculated');
 
-      console.log('\n⏳ Step 3/6: Generating user keypair...');
+      console.log('\n⏳ Step 4/7: Generating user keypair...');
       const keypair = fhevmInstance.generateKeypair();
       console.log('✅ Keypair generated');
 
-      console.log('\n⏳ Step 4/6: Preparing decryption request...');
+      console.log('\n⏳ Step 5/7: Preparing decryption request...');
       const handleContractPairs = [
         { handle: anxietyHandle, contractAddress: CONTRACT_ADDRESS },
         { handle: depressionHandle, contractAddress: CONTRACT_ADDRESS },
@@ -362,7 +367,7 @@ function App() {
       const contractAddresses = [CONTRACT_ADDRESS];
       console.log('✅ Decryption request prepared');
 
-      console.log('\n⏳ Step 5/6: Creating EIP712 signature...');
+      console.log('\n⏳ Step 6/7: Creating EIP712 signature...');
       const eip712 = fhevmInstance.createEIP712(
         keypair.publicKey,
         contractAddresses,
@@ -379,7 +384,7 @@ function App() {
       );
       console.log('✅ Signature completed');
 
-      console.log('\n⏳ Step 6/6: Decrypting via Gateway...');
+      console.log('\n⏳ Step 7/7: Decrypting via Gateway...');
       const result = await fhevmInstance.userDecrypt(
         handleContractPairs,
         keypair.privateKey,

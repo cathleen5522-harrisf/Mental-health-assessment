@@ -1,7 +1,19 @@
-// 合约地址（Sepolia 测试网）
-export const CONTRACT_ADDRESS = "0xf61bF69c08B3A319a15f6216604319850D5d7184";
+// Contract address (Sepolia testnet)
+export const CONTRACT_ADDRESS = "0xC5033f18aA20Cd11F1faAea27B8ddfb129881E6c";
 
-// 合约 ABI
+// FHEVM configuration for Sepolia
+export const SEPOLIA_CONFIG = {
+  kmsContractAddress: "0x1364cBBf2cDF5032C47d8226a6f6FBD2AFCDacAC",
+  aclContractAddress: "0x687820221192C5B662b25367F70076A37bc79b6c",
+  inputVerifierContractAddress: "0xbc91f3daD1A5F19F8390c400196e58073B6a0BC4",
+  verifyingContractAddressDecryption: "0xb6E160B1ff80D67Bfe90A85eE06Ce0A2613607D1",
+  verifyingContractAddressInputVerification: "0x7048C39f048125eDa9d678AEbaDfB22F7900a29F",
+  chainId: 11155111,
+  gatewayChainId: 55815,
+  relayerUrl: "https://relayer.testnet.zama.cloud"
+};
+
+// Contract ABI
 export const CONTRACT_ABI = [
   {
     "anonymous": false,
@@ -65,6 +77,13 @@ export const CONTRACT_ABI = [
     ],
     "name": "ProfileUpdated",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "allowUserDecryption",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
     "inputs": [
@@ -375,12 +394,3 @@ export const CONTRACT_ABI = [
     "type": "function"
   }
 ] as const;
-
-// Sepolia 配置 (使用 checksum 地址格式)
-export const SEPOLIA_CONFIG = {
-  kmsContractAddress: "0x4fDFE9E0CE1f89b5D73e73d50c876e64Cb7e0644",
-  aclContractAddress: "0x687820221192C5B662b25367F70076A37bc79b6c",
-  inputVerifierContractAddress: "0x25efbb3AE3AC9209dD4c29bD5AeE3E0e7d9604E0",
-  gatewayChainId: 8009,
-};
-
