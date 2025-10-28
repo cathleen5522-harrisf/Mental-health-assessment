@@ -1,6 +1,7 @@
 # FHE Mental Health Assessment System
 
 A privacy-preserving mental health assessment platform built on **Zama's Fully Homomorphic Encryption (FHE)** technology and deployed on Ethereum Sepolia testnet.
+DEMO:
 
 ## 🌟 Overview
 
@@ -254,4 +255,5 @@ This is a demonstration project for educational purposes. The mental health asse
 ---
 
 **Built with ❤️ using Zama's FHE technology**
+
 

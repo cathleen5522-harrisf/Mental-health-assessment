@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: BSD-3-Clause-Clear
 pragma solidity ^0.8.24;
 
-import { FHE, euint8, euint32, externalEuint32 } from "@fhevm/solidity/lib/FHE.sol";
-import { SepoliaConfig } from "@fhevm/solidity/config/ZamaConfig.sol";
+import { FHE, euint8, euint32, inEuint32 } from "@fhevm/lib/TFHE.sol";
+import { Permissioned, Permission } from "@fhevm/abstracts/Permissioned.sol";
 
 /**
  * @title FHEMentalHealthChecker
+
  * @notice Privacy-preserving mental health self-assessment system using Fully Homomorphic Encryption
  * @dev All mental health data remains encrypted on-chain, only users can decrypt their own data
  */
-contract FHEMentalHealthChecker is SepoliaConfig {
+contract FHEMentalHealthChecker is Permissioned {
     
     /**
+
      * @dev Mental health metric types (based on clinical standard scales)
      */
     enum MentalHealthMetric {
+
         ANXIETY_LEVEL,      // Anxiety level (GAD-7 scale: 0-21)
         DEPRESSION_SCORE,   // Depression score (PHQ-9 scale: 0-27)
         STRESS_INDEX,       // Stress index (PSS scale: 0-40)
@@ -23,9 +26,11 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     }
     
     // =====================================================================
+
     // Mental Health Metric Ranges (based on clinical standards)
     // =====================================================================
     
+
     // Anxiety Level (GAD-7: 0-21)
     // 0-7: Minimal anxiety (healthy)
     // 8-14: Moderate anxiety (needs attention)
@@ -33,6 +38,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     uint32 private constant ANXIETY_HEALTHY_MAX = 7;
     uint32 private constant ANXIETY_RANGE_MAX = 21;
     
+
     // Depression Score (PHQ-9: 0-27)
     // 0-9: Minimal depression (healthy)
     // 10-19: Moderate depression (needs attention)
@@ -40,6 +46,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     uint32 private constant DEPRESSION_HEALTHY_MAX = 9;
     uint32 private constant DEPRESSION_RANGE_MAX = 27;
     
+
     // Stress Index (PSS: 0-40)
     // 0-13: Low stress (healthy)
     // 14-26: Moderate stress (needs attention)
@@ -47,6 +54,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     uint32 private constant STRESS_HEALTHY_MAX = 13;
     uint32 private constant STRESS_RANGE_MAX = 40;
     
+
     // Sleep Quality (PSQI: 0-21, note: lower score is better)
     // 0-5: Good sleep (healthy)
     // 6-10: Mild sleep problems (needs attention)
@@ -54,6 +62,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     uint32 private constant SLEEP_GOOD_MAX = 5;
     uint32 private constant SLEEP_RANGE_MAX = 21;
     
+
     // Psychological Resilience (CD-RISC: 0-100, note: higher score is better)
     // 80-100: High resilience (healthy)
     // 50-79: Moderate resilience (needs attention)
@@ -62,10 +71,12 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     uint32 private constant RESILIENCE_RANGE_MAX = 100;
     
     // =====================================================================
+
     // Data Structures
     // =====================================================================
     
     /**
+
      * @dev User's mental health profile (all encrypted)
      */
     struct MentalHealthProfile {
@@ -74,7 +85,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
         euint32 stressIndex;       // Stress index (encrypted)
         euint32 sleepQuality;      // Sleep quality (encrypted)
         euint32 resilienceScore;   // Resilience score (encrypted)
-        uint256 lastUpdateTime;    // Last update time (not encrypted, public info)
+        euint32 lastUpdateTime;    // Last update time (encrypted)
         bool exists;               // Whether record exists
     }
     
@@ -89,50 +100,44 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     mapping(address => uint256) public assessmentCount;
     
     // =====================================================================
+
     // Events
     // =====================================================================
     
+
     event ProfileCreated(address indexed user, uint256 timestamp);
     event ProfileUpdated(address indexed user, uint256 timestamp);
     event MetricUpdated(address indexed user, MentalHealthMetric metric, uint256 timestamp);
     
     // =====================================================================
+
     // Core Functions
     // =====================================================================
     
     /**
+
      * @notice Create mental health profile
      * @param _anxietyLevel Anxiety level (encrypted input, 0-21)
-     * @param _anxietyProof Proof for anxiety level
      * @param _depressionScore Depression score (encrypted input, 0-27)
-     * @param _depressionProof Proof for depression score
      * @param _stressIndex Stress index (encrypted input, 0-40)
-     * @param _stressProof Proof for stress index
      * @param _sleepQuality Sleep quality (encrypted input, 0-21)
-     * @param _sleepProof Proof for sleep quality
      * @param _resilienceScore Resilience score (encrypted input, 0-100)
-     * @param _resilienceProof Proof for resilience score
      */
     function createProfile(
-        externalEuint32 _anxietyLevel,
-        bytes calldata _anxietyProof,
-        externalEuint32 _depressionScore,
-        bytes calldata _depressionProof,
-        externalEuint32 _stressIndex,
-        bytes calldata _stressProof,
-        externalEuint32 _sleepQuality,
-        bytes calldata _sleepProof,
-        externalEuint32 _resilienceScore,
-        bytes calldata _resilienceProof
+        inEuint32 calldata _anxietyLevel,
+        inEuint32 calldata _depressionScore,
+        inEuint32 calldata _stressIndex,
+        inEuint32 calldata _sleepQuality,
+        inEuint32 calldata _resilienceScore
     ) external {
         require(!userProfiles[msg.sender].exists, "Profile already exists");
         
         // Convert encrypted inputs
-        euint32 anxiety = FHE.fromExternal(_anxietyLevel, _anxietyProof);
-        euint32 depression = FHE.fromExternal(_depressionScore, _depressionProof);
-        euint32 stress = FHE.fromExternal(_stressIndex, _stressProof);
-        euint32 sleep = FHE.fromExternal(_sleepQuality, _sleepProof);
-        euint32 resilience = FHE.fromExternal(_resilienceScore, _resilienceProof);
+        euint32 anxiety = FHE.asEuint32(_anxietyLevel);
+        euint32 depression = FHE.asEuint32(_depressionScore);
+        euint32 stress = FHE.asEuint32(_stressIndex);
+        euint32 sleep = FHE.asEuint32(_sleepQuality);
+        euint32 resilience = FHE.asEuint32(_resilienceScore);
         
         // Create profile
         userProfiles[msg.sender] = MentalHealthProfile({
@@ -141,7 +146,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
             stressIndex: stress,
             sleepQuality: sleep,
             resilienceScore: resilience,
-            lastUpdateTime: block.timestamp,
+            lastUpdateTime: FHE.asEuint32(block.timestamp),
             exists: true
         });
         
@@ -166,28 +171,24 @@ contract FHEMentalHealthChecker is SepoliaConfig {
      * @notice Update complete mental health profile
      */
     function updateProfile(
-        externalEuint32 _anxietyLevel,
-        bytes calldata _anxietyProof,
-        externalEuint32 _depressionScore,
-        bytes calldata _depressionProof,
-        externalEuint32 _stressIndex,
-        bytes calldata _stressProof,
-        externalEuint32 _sleepQuality,
-        bytes calldata _sleepProof,
-        externalEuint32 _resilienceScore,
-        bytes calldata _resilienceProof
+        inEuint32 calldata _anxietyLevel,
+        inEuint32 calldata _depressionScore,
+        inEuint32 calldata _stressIndex,
+        inEuint32 calldata _sleepQuality,
+        inEuint32 calldata _resilienceScore
     ) external {
+
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
         
         // Update all metrics
-        profile.anxietyLevel = FHE.fromExternal(_anxietyLevel, _anxietyProof);
-        profile.depressionScore = FHE.fromExternal(_depressionScore, _depressionProof);
-        profile.stressIndex = FHE.fromExternal(_stressIndex, _stressProof);
-        profile.sleepQuality = FHE.fromExternal(_sleepQuality, _sleepProof);
-        profile.resilienceScore = FHE.fromExternal(_resilienceScore, _resilienceProof);
-        profile.lastUpdateTime = block.timestamp;
+        profile.anxietyLevel = FHE.asEuint32(_anxietyLevel);
+        profile.depressionScore = FHE.asEuint32(_depressionScore);
+        profile.stressIndex = FHE.asEuint32(_stressIndex);
+        profile.sleepQuality = FHE.asEuint32(_sleepQuality);
+        profile.resilienceScore = FHE.asEuint32(_resilienceScore);
+        profile.lastUpdateTime = FHE.asEuint32(block.timestamp);
         
         assessmentCount[msg.sender]++;
         
@@ -210,17 +211,16 @@ contract FHEMentalHealthChecker is SepoliaConfig {
      * @notice Update a single mental health metric
      * @param metric The metric type to update
      * @param value New metric value (encrypted)
-     * @param inputProof Proof for the encrypted value
      */
     function updateMetric(
         MentalHealthMetric metric,
-        externalEuint32 value,
-        bytes calldata inputProof
+        inEuint32 calldata value
     ) external {
+
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
-        euint32 encryptedValue = FHE.fromExternal(value, inputProof);
+        euint32 encryptedValue = FHE.asEuint32(value);
         
         if (metric == MentalHealthMetric.ANXIETY_LEVEL) {
             profile.anxietyLevel = encryptedValue;
@@ -234,7 +234,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
             profile.resilienceScore = encryptedValue;
         }
         
-        profile.lastUpdateTime = block.timestamp;
+        profile.lastUpdateTime = FHE.asEuint32(block.timestamp);
         
         // Grant user permission to view
         FHE.allowThis(encryptedValue);
@@ -244,10 +244,12 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     }
     
     // =====================================================================
+
     // Query Functions (only the user can view their own data)
     // =====================================================================
     
     /**
+
      * @notice Get anxiety level (encrypted)
      * @return Encrypted anxiety level
      */
@@ -319,7 +321,7 @@ contract FHEMentalHealthChecker is SepoliaConfig {
      * @notice Calculate overall mental health status (encrypted computation)
      * @return Overall status score (encrypted, 0=healthy, 1=needs attention, 2=needs help)
      */
-    function getOverallStatus() external returns (euint8) {
+    function getOverallStatus() external view returns (euint8) {
         require(userProfiles[msg.sender].exists, "Profile does not exist");
         
         MentalHealthProfile storage profile = userProfiles[msg.sender];
@@ -389,10 +391,6 @@ contract FHEMentalHealthChecker is SepoliaConfig {
             )
         );
         
-        // Grant user permission to decrypt the status
-        FHE.allowThis(status);
-        FHE.allow(status, msg.sender);
-        
         return status;
     }
     
@@ -411,4 +409,4 @@ contract FHEMentalHealthChecker is SepoliaConfig {
     function getAssessmentCount() external view returns (uint256) {
         return assessmentCount[msg.sender];
     }
-}
+   

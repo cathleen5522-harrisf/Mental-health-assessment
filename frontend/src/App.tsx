@@ -34,6 +34,10 @@ function App() {
   const [decryptedData, setDecryptedData] = useState<any>(null);
   const [showModal, setShowModal] = useState(false);
   const [countdown, setCountdown] = useState(5);
+  
+  // Update cooldown state
+  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+  const [canUpdate, setCanUpdate] = useState(true);
 
   // Check network
   useEffect(() => {
@@ -91,6 +95,29 @@ function App() {
       setCountdown(5);
     }
   }, [showModal, countdown]);
+
+  // Check update cooldown (24 hours)
+  useEffect(() => {
+    const checkCooldown = () => {
+      const storedTime = localStorage.getItem(`lastUpdate_${address}`);
+      if (storedTime) {
+        const lastTime = parseInt(storedTime);
+        setLastUpdateTime(lastTime);
+        const now = Date.now();
+        const hoursPassed = (now - lastTime) / (1000 * 60 * 60);
+        setCanUpdate(hoursPassed >= 24);
+      } else {
+        setCanUpdate(true);
+      }
+    };
+
+    if (address) {
+      checkCooldown();
+      // Check every minute
+      const interval = setInterval(checkCooldown, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [address]);
 
   // Load user profile status
   const loadProfileStatus = async () => {
@@ -183,6 +210,12 @@ function App() {
       const receipt = await tx.wait();
       console.log(`✅ Transaction confirmed! Block: ${receipt.blockNumber}`);
 
+      // Save creation timestamp
+      const now = Date.now();
+      localStorage.setItem(`lastUpdate_${address}`, now.toString());
+      setLastUpdateTime(now);
+      setCanUpdate(false);
+
       setSuccess(`Profile created successfully! Tx: ${tx.hash}`);
       await loadProfileStatus();
       
@@ -255,6 +288,12 @@ function App() {
 
       const receipt = await tx.wait();
       console.log(`✅ Transaction confirmed! Block: ${receipt.blockNumber}`);
+
+      // Save update timestamp
+      const now = Date.now();
+      localStorage.setItem(`lastUpdate_${address}`, now.toString());
+      setLastUpdateTime(now);
+      setCanUpdate(false);
 
       setSuccess(`Profile updated successfully! Tx: ${tx.hash}`);
       await loadProfileStatus();
@@ -752,7 +791,7 @@ function App() {
                 </div>
 
                 {/* Right: Update Profile */}
-                <div className="card">
+                <div className="card" style={{ position: 'relative' }}>
                   <div className="card-header">
                     <div className="header-icon">
                       <svg viewBox="0 0 24 24" fill="none">
@@ -761,7 +800,7 @@ function App() {
                     </div>
                     <h3 className="card-title">Update Profile</h3>
                   </div>
-                  <div className="card-body">
+                  <div className="card-body" style={{ filter: !canUpdate ? 'blur(3px)' : 'none', pointerEvents: !canUpdate ? 'none' : 'auto' }}>
                     <div className="form-grid">
                       <div className="form-field">
                         <div className="slider-label">
@@ -869,6 +908,32 @@ function App() {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Cooldown overlay */}
+                  {!canUpdate && (
+                    <div className="cooldown-overlay">
+                      <div className="cooldown-content">
+                        <svg viewBox="0 0 24 24" fill="none" style={{ width: '48px', height: '48px', marginBottom: '16px' }}>
+                          <path d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <h3 style={{ marginBottom: '8px', fontSize: '1.25rem', fontWeight: 600 }}>Update Cooldown</h3>
+                        <p style={{ color: 'var(--gray-600)', marginBottom: '16px' }}>Please come back tomorrow to update your profile</p>
+                        {lastUpdateTime > 0 && (
+                          <div style={{ 
+                            background: 'rgba(255, 255, 255, 0.9)', 
+                            padding: '12px 20px', 
+                            borderRadius: '8px',
+                            fontSize: '0.9rem',
+                            color: 'var(--gray-700)'
+                          }}>
+                            <p style={{ margin: 0 }}>
+                              Next update available: {new Date(lastUpdateTime + 24 * 60 * 60 * 1000).toLocaleString()}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
