@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FHE Mental Health Assessment System</title>
+    
+    <!-- 🔐 Load Zama Relayer SDK (UMD version) -->
+    <script
+      src="https://cdn.zama.ai/relayer-sdk-js/0.2.0/relayer-sdk-js.umd.cjs"
+      type="text/javascript"
+      onload="console.log('✅ Relayer SDK UMD loaded'); console.log('SDK keys:', Object.keys(window.zamaRelayerSDK || window.relayerSDK || {}));"
+    ></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
