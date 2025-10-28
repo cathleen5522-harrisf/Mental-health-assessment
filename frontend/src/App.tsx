@@ -37,7 +37,7 @@ function App() {
   
   // Update cooldown state
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
-  const [canUpdate, setCanUpdate] = useState(true);
+  const [canUpdate, setCanUpdate] = useState(false);
 
   // Check network
   useEffect(() => {
@@ -99,6 +99,12 @@ function App() {
   // Check update cooldown (24 hours)
   useEffect(() => {
     const checkCooldown = () => {
+      // If no profile yet, can't update (still in creation stage)
+      if (!hasProfile) {
+        setCanUpdate(false);
+        return;
+      }
+
       const storedTime = localStorage.getItem(`lastUpdate_${address}`);
       if (storedTime) {
         const lastTime = parseInt(storedTime);
@@ -107,7 +113,8 @@ function App() {
         const hoursPassed = (now - lastTime) / (1000 * 60 * 60);
         setCanUpdate(hoursPassed >= 24);
       } else {
-        setCanUpdate(true);
+        // Has profile but no timestamp (shouldn't happen, but handle it)
+        setCanUpdate(false);
       }
     };
 
@@ -117,7 +124,7 @@ function App() {
       const interval = setInterval(checkCooldown, 60000);
       return () => clearInterval(interval);
     }
-  }, [address]);
+  }, [address, hasProfile]);
 
   // Load user profile status
   const loadProfileStatus = async () => {
